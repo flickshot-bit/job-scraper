@@ -23,7 +23,7 @@ export default function App() {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/career-roadmap",
+        "https://job-scraper-1ah4.onrender.com/career-roadmap",
         {
           method: "POST",
           headers: {
@@ -54,7 +54,7 @@ export default function App() {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/extract",
+        "https://job-scraper-1ah4.onrender.com/extract",
         {
           method: "POST",
           headers: {
@@ -97,7 +97,7 @@ Try another job URL.
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/job-roadmap",
+        "https://job-scraper-1ah4.onrender.com/job-roadmap",
         {
           method: "POST",
           headers: {
