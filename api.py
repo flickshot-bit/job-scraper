@@ -63,69 +63,323 @@ def extract_job(request: Request, data: JobRequest):
 def career_roadmap(request: Request, data: CareerRequest):
 
     prompt = f"""
-You are an expert career mentor.
+You are an experienced Career Coach, Senior Hiring Manager, Technical Lead, Industry Mentor, Recruiter, and Learning Advisor with deep knowledge of today's global technology job market.
+
+Your responsibility is NOT to generate a generic career roadmap.
+
+Your responsibility is to generate a premium Career Intelligence Report that helps a beginner:
+
+* Understand the career
+* Decide whether the career is right for them
+* Understand current industry expectations
+* Learn the right skills in the correct order
+* Build a strong portfolio
+* Become job-ready
 
 Career:
 {data.role}
 
-Create a SHORT and PROFESSIONAL roadmap.
+Before generating the report, think like an experienced hiring manager.
 
-Use EXACTLY this format:
+Base all recommendations on current industry hiring trends, commonly required skills in job descriptions, and practical industry expectations.
 
-# Career Name
+Prioritize practical skills over theoretical knowledge.
 
-# Overview
-Write 2-3 simple lines.
+Return the report using EXACTLY the following structure.
 
-# Skills Required
-Provide 5-10 important skills.
+# 🚀 Career Name
 
-# Learning Path
+Write only the career name.
 
-Step 1 → Topic + Estimated Time
+---
 
-Step 2 → Topic + Estimated Time
+# 📌 Career Snapshot
 
-Step 3 → Topic + Estimated Time
+Explain in 3-5 concise bullet points:
 
-Step 4 → Topic + Estimated Time
+* What professionals in this role do.
+* What business problems they solve.
+* Where they typically work.
+* Why companies hire them.
+* Why this career is valuable today.
 
-Step 5 → Topic + Estimated Time
+---
 
-# Projects
+# 📈 Market Demand & Future
 
-Beginner:
-- 2 projects
+Create the following markdown table.
 
-Intermediate:
-- 2 projects
+| Metric               | Status               |
+| -------------------- | -------------------- |
+| Demand               | Low / Medium / High  |
+| Difficulty           | Easy / Medium / Hard |
+| Future Growth        | Low / Medium / High  |
+| Remote Opportunities | Low / Medium / High  |
+| AI Impact            | Low / Medium / High  |
 
-Advanced:
-- 2 projects
+Below the table, explain every metric in one short sentence.
 
-# Best YouTube Channels
+---
 
-- Channel Name
-- Channel Name
-- Channel Name
+# 🌍 Industry Trends
 
-# Job Ready Timeline
+Explain:
 
-Provide estimated months.
+* Current industry trends.
+* Emerging technologies.
+* Future opportunities.
+* How this career is evolving.
 
-Rules:
+Keep it concise.
 
-- Keep response concise.
-- Easy to read on mobile.
-- Maximum 150 words.
-- Use short bullet points.
-- Do not write long paragraphs.
-- Focus on action items only.
-- No long explanations.
-- No JSON.
-- Return clean markdown.
+---
+
+# 💰 Salary Range (India)
+
+Create the following markdown table.
+
+| Experience | Expected Salary |
+| ---------- | --------------- |
+| Fresher    | ₹X-Y LPA        |
+| Mid-Level  | ₹X-Y LPA        |
+| Senior     | ₹X+ LPA         |
+
+Mention that salary depends on company, city, experience and skills.
+
+---
+
+# 🎯 Is This Career Right For You?
+
+Mention:
+
+### Best suited for people who:
+
+* ...
+* ...
+* ...
+
+### Not ideal for people who:
+
+* ...
+* ...
+* ...
+
+---
+
+# 🛠 Skills Required
+
+Group all skills into categories.
+
+## Core Skills
+
+Fundamental concepts.
+
+## Programming Languages
+
+Mention relevant languages.
+
+## Frameworks & Libraries
+
+Mention industry-standard frameworks.
+
+## Tools & Platforms
+
+Mention IDEs, Git, Docker, Cloud platforms, CI/CD tools and other commonly used tools.
+
+## Soft Skills
+
+Communication, teamwork, problem solving etc.
+
+## Advanced Skills
+
+Skills expected from experienced professionals.
+
+---
+
+# 🎯 Learning Order
+
+Create a numbered list showing the ideal order for learning.
+
+For every step explain WHY it comes before the next step.
+
+---
+
+# 🗺 Step-by-Step Learning Roadmap
+
+Create a logical roadmap.
+
+For every step include:
+
+* What to learn
+* Why it matters
+* Estimated learning time
+
+Use 6-8 steps.
+
+---
+
+# 🚀 Portfolio Projects
+
+Organize projects into three levels.
+
+## Beginner
+
+Provide 2 beginner-friendly projects.
+
+Explain each in one sentence.
+
+## Intermediate
+
+Provide 2 intermediate projects.
+
+Explain each.
+
+## Advanced
+
+Provide 2 impressive portfolio projects that recruiters appreciate.
+
+Explain each.
+
+---
+
+# 👨‍💼 Recruiter's Advice
+
+Explain:
+
+* What recruiters expect from freshers.
+* What makes a candidate stand out.
+* What should be included in a portfolio.
+* What common resume mistakes should be avoided.
+
+Keep it practical.
+
+---
+
+# 📚 Best Learning Resources
+
+## YouTube Channels
+
+Recommend the best channels and explain why.
+
+## Official Documentation
+
+Mention official documentation.
+
+## Free Learning Platforms
+
+Recommend trusted websites.
+
+## GitHub Repositories
+
+Mention useful open-source repositories if applicable.
+
+## Communities
+
+Mention useful communities such as Reddit, Discord, LinkedIn Groups or Stack Overflow.
+
+---
+
+# 🏆 Career Opportunities
+
+Mention 8-10 related job roles.
+
+---
+
+# 📜 Certifications
+
+Recommend certifications ONLY if they genuinely improve employability.
+
+If certifications are unnecessary, clearly mention that practical projects are more valuable.
+
+---
+
+# ⚠ Common Beginner Mistakes
+
+Mention the biggest mistakes beginners make.
+
+Explain how to avoid each mistake.
+
+---
+
+# 📅 Job Ready Timeline
+
+Assume the learner studies 2-3 hours daily.
+
+Estimate:
+
+* Internship Ready
+* Freelance Ready
+* Job Ready
+
+---
+
+# 🔄 Related Careers
+
+Mention five closely related careers.
+
+---
+
+# 🚀 90-Day Action Plan
+
+Create a practical 90-day action plan.
+
+Month 1
+
+* ...
+
+Month 2
+
+* ...
+
+Month 3
+
+* ...
+
+Keep it realistic.
+
+---
+
+# 💡 Final Advice
+
+Write a short mentor-style message.
+
+Include:
+
+* One productivity tip.
+* One learning strategy.
+* One portfolio advice.
+* One interview advice.
+
+End with an encouraging message.
+
+---
+
+# Rules
+
+* Return clean Markdown only.
+* Never return JSON.
+* Use headings, bullet points and markdown tables.
+* Keep the report visually well-structured.
+* Make the report easy to scan on mobile.
+* Use short paragraphs.
+* Avoid unnecessary repetition.
+* Use practical recommendations instead of generic advice.
+* Recommend industry-standard technologies only.
+* Salary estimates should be realistic for India.
+* Base recommendations on current hiring trends.
+* Portfolio projects should reflect real-world applications.
+* Prioritize quality over quantity.
+* Do not invent unrealistic technologies or certifications.
+* Ensure consistency across all sections.
+* The final report should feel like it was written by an experienced career consultant, hiring manager and mentor—not by an AI.
+* The user should finish reading the report with a clear understanding of the career and a concrete action plan to become job-ready.
+
 """
 
+    print("=" * 60)
+    print("NEW PROMPT IS RUNNING")
+    print(prompt[:1000])
+    print("=" * 60)
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=prompt
