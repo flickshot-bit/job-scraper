@@ -21,19 +21,21 @@ client = genai.Client(
 
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Rate limiting
 limiter = Limiter(key_func=get_remote_address)
 
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 JSON_SCHEMA = '''{  "career": {    "title": "",    "tagline": ""  },  "summary": {    "demand": "",    "difficulty": "",    "growth": "",    "remote": "",    "salary": {      "fresher": "",      "mid": "",      "senior": ""    }  },  "snapshot": [    "",    "",    "",    ""  ],  "skills": {    "core": [],    "languages": [],    "frameworks": [],    "tools": [],    "soft": [],    "advanced": []  },  "learning_roadmap": [    {      "step": 1,      "title": "",      "description": "",      "duration": ""    }  ],  "projects": {    "beginner": [      {        "title": "",        "description": "",        "skills": []      }    ],    "intermediate": [      {        "title": "",        "description": "",        "skills": []      }    ],    "advanced": [      {        "title": "",        "description": "",        "skills": []      }    ]  },  "resources": {    "youtube": [      {        "name": "",        "reason": ""      }    ],    "documentation": [      {        "name": "",        "url": ""      }    ],    "platforms": [      {        "name": "",        "reason": ""      }    ],    "books": [      {        "name": "",        "reason": ""      }    ]  },  "recruiter_insights": {    "what_recruiters_look_for": [],    "portfolio_tips": [],    "resume_tips": [],    "interview_tips": []  },  "career_opportunities": {    "job_roles": [],    "industries": []  },  "certifications": [    {      "name": "",      "provider": "",      "level": "",      "recommended": true,      "reason": ""    }  ],  "beginner_mistakes": [    {      "mistake": "",      "impact": "",      "solution": ""    }  ],  "job_ready_timeline": {    "internship_ready": {      "duration": "",      "requirements": []    },    "freelance_ready": {      "duration": "",      "requirements": []    },    "job_ready": {      "duration": "",      "requirements": []    }  },  "action_plan": {    "month1": {      "title": "",      "goals": []    },    "month2": {      "title": "",      "goals": []    },    "month3": {      "title": "",      "goals": []    }  }}'''
 
