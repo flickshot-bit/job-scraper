@@ -1,8 +1,24 @@
-from scrapling.fetchers import StealthyFetcher, DynamicFetcher
+import httpx
+from bs4 import BeautifulSoup
+from playwright.sync_api import sync_playwright
 from urllib.parse import urlparse
 import json
 import re
 import html
+
+DEFAULT_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": (
+        "text/html,application/xhtml+xml,application/xml;"
+        "q=0.9,image/webp,*/*;q=0.8"
+    ),
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
 
 def clean_html(text):
 
@@ -17,6 +33,7 @@ def clean_html(text):
     text = re.sub(r'\n+', '\n', text)
 
     return text.strip()
+
 
 def detect_site(url):
     domain = urlparse(url).netloc.lower()
@@ -58,28 +75,49 @@ def get_selectors(site):
     ]
 
 
-def extract_json_ld_data(page):
+def extract_json_ld_data(soup):
 
-    scripts = page.css(
-        'script[type="application/ld+json"]::text'
-    ).getall()
+    try:
+        scripts = soup.find_all(
+            "script", attrs={"type": "application/ld+json"}
+        )
+    except Exception:
+        return None
 
     for script in scripts:
 
         try:
-            data = json.loads(script)
+            raw = script.string
+
+            if not raw:
+                raw = script.get_text()
+
+            if not raw:
+                continue
+
+            data = json.loads(raw)
 
             if isinstance(data, list):
 
                 for item in data:
 
-                    if item.get("@type") == "JobPosting":
+                    if isinstance(item, dict) and item.get("@type") == "JobPosting":
                         return item
 
             elif isinstance(data, dict):
 
                 if data.get("@type") == "JobPosting":
                     return data
+
+                # Some sites nest the JobPosting under @graph
+                graph = data.get("@graph")
+
+                if isinstance(graph, list):
+
+                    for item in graph:
+
+                        if isinstance(item, dict) and item.get("@type") == "JobPosting":
+                            return item
 
         except Exception:
             continue
@@ -155,13 +193,16 @@ def extract_structured_data(job_json):
     }
 
 
-def extract_title(page):
+def extract_title(soup):
 
     try:
-        title = page.css("h1::text").get()
+        h1 = soup.find("h1")
 
-        if title:
-            return title.strip()
+        if h1:
+            text = h1.get_text(strip=True)
+
+            if text:
+                return text
 
     except Exception:
         pass
@@ -209,21 +250,29 @@ def normalize_output(data):
     return data
 
 
-def extract_description(page, selectors):
+def extract_description(soup, selectors):
 
     for sel in selectors:
 
-        elements = page.css(sel)
+        try:
+            elements = soup.select(sel)
+        except Exception:
+            elements = []
 
         if elements:
 
-            text_list = elements.css("::text").getall()
+            clean_text = []
 
-            clean_text = [
-                t.strip()
-                for t in text_list
-                if t.strip()
-            ]
+            for el in elements:
+
+                text = el.get_text(separator="\n", strip=True)
+
+                for line in text.split("\n"):
+
+                    line = line.strip()
+
+                    if line:
+                        clean_text.append(line)
 
             if clean_text:
                 return "\n".join(clean_text)
@@ -231,15 +280,20 @@ def extract_description(page, selectors):
     return None
 
 
-def fallback_extraction(page):
+def fallback_extraction(soup):
 
     try:
 
-        texts = page.css("body ::text").getall()
+        body = soup.find("body")
+
+        if not body:
+            return None
+
+        text = body.get_text(separator="\n", strip=True)
 
         clean_text = [
             t.strip()
-            for t in texts
+            for t in text.split("\n")
             if t.strip()
         ]
 
@@ -249,11 +303,11 @@ def fallback_extraction(page):
         return None
 
 
-def is_blocked(page):
+def is_blocked(soup):
 
     try:
 
-        content = page.text.lower()
+        content = soup.get_text(separator=" ", strip=True).lower()
 
         blocked_keywords = [
             "captcha",
@@ -261,7 +315,11 @@ def is_blocked(page):
             "challenge-platform",
             "captcha-delivery",
             "access denied",
-            "verify you are human"
+            "verify you are human",
+            "checking your browser",
+            "just a moment",
+            "cf-browser-verification",
+            "security check"
         ]
 
         return any(
@@ -271,6 +329,126 @@ def is_blocked(page):
 
     except Exception:
         return False
+
+
+def _fetch_static_html(url):
+
+    try:
+        with httpx.Client(
+            headers=DEFAULT_HEADERS,
+            timeout=15.0,
+            follow_redirects=True,
+            http2=False
+        ) as client:
+
+            response = client.get(url)
+
+            if response.status_code >= 400:
+                return None
+
+            if not response.text:
+                return None
+
+            return response.text
+
+    except Exception:
+        return None
+
+
+def _fetch_dynamic_html(url):
+
+    try:
+        with sync_playwright() as p:
+
+            browser = p.chromium.launch(
+                headless=True,
+                args=[
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                ]
+            )
+
+            try:
+                context = browser.new_context(
+                    user_agent=DEFAULT_HEADERS["User-Agent"],
+                    locale="en-US",
+                    viewport={"width": 1366, "height": 768}
+                )
+
+                page = context.new_page()
+
+                page.set_default_navigation_timeout(30000)
+                page.set_default_timeout(30000)
+
+                page.goto(url, wait_until="domcontentloaded")
+
+                try:
+                    page.wait_for_load_state("networkidle", timeout=10000)
+                except Exception:
+                    pass
+
+                page.wait_for_timeout(2000)
+
+                content = page.content()
+
+                return content
+
+            finally:
+                browser.close()
+
+    except Exception:
+        return None
+
+
+def _content_is_sufficient(soup, selectors):
+
+    if not soup:
+        return False
+
+    if extract_json_ld_data(soup):
+        return True
+
+    if extract_description(soup, selectors):
+        return True
+
+    return False
+
+
+def _process_soup(soup, selectors, source_label):
+
+    if is_blocked(soup):
+        return {"error": "Blocked by website"}
+
+    job_json = extract_json_ld_data(soup)
+
+    structured = extract_structured_data(job_json)
+
+    if structured:
+
+        if not structured.get("title"):
+            structured["title"] = extract_title(soup)
+
+        structured = normalize_output(structured)
+
+        print(f"Extracted structured JSON data ({source_label})")
+
+        return structured
+
+    desc = extract_description(soup, selectors)
+
+    if desc:
+
+        return normalize_output({
+            "title": extract_title(soup),
+            "description": desc,
+            "skills": None,
+            "salary": None,
+            "location": None
+        })
+
+    return None
 
 
 def get_job_data(url):
@@ -285,79 +463,47 @@ def get_job_data(url):
 
     try:
 
-        page = StealthyFetcher.fetch(
-            url,
-            headless=True
-        )
+        html_content = _fetch_static_html(url)
 
-        if is_blocked(page):
+        soup = None
+
+        if html_content:
+            soup = BeautifulSoup(html_content, "html.parser")
+
+        if soup and not is_blocked(soup) and _content_is_sufficient(soup, selectors):
+
+            result = _process_soup(soup, selectors, "static")
+
+            if result:
+                return result
+
+        print("Static fetch insufficient, trying Playwright...")
+
+        dynamic_html = _fetch_dynamic_html(url)
+
+        if not dynamic_html:
+
+            if soup:
+                fallback = fallback_extraction(soup)
+
+                if fallback:
+                    return {
+                        "description": fallback
+                    }
+
+            return {"error": "No data found"}
+
+        dynamic_soup = BeautifulSoup(dynamic_html, "html.parser")
+
+        if is_blocked(dynamic_soup):
             return {"error": "Blocked by website"}
 
-        job_json = extract_json_ld_data(page)
+        result = _process_soup(dynamic_soup, selectors, "dynamic")
 
-        structured = extract_structured_data(job_json)
+        if result:
+            return result
 
-        if structured:
-
-            if not structured.get("title"):
-                structured["title"] = extract_title(page)
-
-            structured = normalize_output(structured)
-
-            print("Extracted structured JSON data")
-
-            return structured
-
-        desc = extract_description(page, selectors)
-
-        if desc:
-
-            return normalize_output({
-                "title": extract_title(page),
-                "description": desc,
-                "skills": None,
-                "salary": None,
-                "location": None
-            })
-
-        print("Trying dynamic fetch...")
-
-        page = DynamicFetcher.fetch(
-            url,
-            headless=True
-        )
-
-        if is_blocked(page):
-            return {"error": "Blocked by website"}
-
-        job_json = extract_json_ld_data(page)
-
-        structured = extract_structured_data(job_json)
-
-        if structured:
-
-            if not structured.get("title"):
-                structured["title"] = extract_title(page)
-
-            structured = normalize_output(structured)
-
-            print("Extracted structured JSON data (dynamic)")
-
-            return structured
-
-        desc = extract_description(page, selectors)
-
-        if desc:
-
-            return normalize_output({
-                "title": extract_title(page),
-                "description": desc,
-                "skills": None,
-                "salary": None,
-                "location": None
-            })
-
-        fallback = fallback_extraction(page)
+        fallback = fallback_extraction(dynamic_soup)
 
         if fallback:
             return {
